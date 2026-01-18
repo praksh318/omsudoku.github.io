@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sudoku Challenge</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        // Get data from URL parameter
+        function getParameterByName(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            let regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        function redirectToApp() {
+            let data = getParameterByName('data');
+            if (data) {
+                // Try to open Android app
+                window.location.href = 'sudoku://play?data=' + data;
+                
+                // If app not installed, redirect to Play Store after delay
+                setTimeout(function() {
+                    window.location.href = 'https://play.google.com/store/apps/details?id=com.OmSwastikaTech.SudokuOffline&referrer=' + encodeURIComponent(data);
+                }, 1000);
+            } else {
+                // No data, just go to Play Store
+                window.location.href = 'https://play.google.com/store/apps/details?id=com.OmSwastikaTech.SudokuOffline';
+            }
+        }
+
+        // Auto-redirect on page load
+        window.onload = function() {
+            redirectToApp();
+        };
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Sudoku Challenge</h1>
+        <p>Opening your Sudoku puzzle...</p>
+        <div class="loader"></div>
+        <p>If redirect doesn't work, <a href="#" onclick="redirectToApp()" style="color: #4CAF50;">click here</a></p>
+    </div>
+</body>
+</html>
