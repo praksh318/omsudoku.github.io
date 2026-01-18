@@ -5,81 +5,284 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script>
-        // Get data from URL parameter
-        function getParameterByName(name, url = window.location.href) {
-            name = name.replace(/[\[\]]/g, '\\$&');
-            let regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
-                results = regex.exec(url);
-            if (!results) return null;
-            if (!results[2]) return '';
-            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        // Get URL parameter
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Base64 to JSON for preview
+        function decodeBase64(base64) {
+            try {
+                const jsonString = atob(base64);
+                return JSON.parse(jsonString);
+            } catch (e) {
+                return null;
+            }
         }
 
         function redirectToApp() {
-            let data = getParameterByName('data');
+            const data = getQueryParam('data');
+            
             if (data) {
-                // Try to open Android app
+                // Store data for app to read
+                localStorage.setItem('sudokuPuzzleData', data);
+                
+                // 1. Try Android App (Deep Link)
                 window.location.href = 'sudoku://play?data=' + data;
                 
-                // If app not installed, redirect to Play Store after delay
+                // 2. If app not installed, fallback to Play Store after 1.5 seconds
                 setTimeout(function() {
+                    // Fallback to Play Store with referrer
                     window.location.href = 'https://play.google.com/store/apps/details?id=com.OmSwastikaTech.SudokuOffline&referrer=' + encodeURIComponent(data);
-                }, 1000);
+                }, 1500);
+                
             } else {
-                // No data, just go to Play Store
+                // No puzzle data, just open Play Store
                 window.location.href = 'https://play.google.com/store/apps/details?id=com.OmSwastikaTech.SudokuOffline';
             }
         }
 
-        // Auto-redirect on page load
+        // Show puzzle preview
+        function showPreview() {
+            const data = getQueryParam('data');
+            const previewDiv = document.getElementById('puzzlePreview');
+            
+            if (data) {
+                const puzzleData = decodeBase64(data);
+                if (puzzleData) {
+                    previewDiv.innerHTML = `
+                        <h3>📱 Puzzle Preview</h3>
+                        <p><strong>Size:</strong> ${puzzleData.boardSize}×${puzzleData.boardSize}</p>
+                        <p><strong>Difficulty:</strong> ${getDifficultyName(puzzleData.difficulty)}</p>
+                        <div class="preview-grid">
+                            ${generateGridPreview(puzzleData)}
+                        </div>
+                    `;
+                    previewDiv.style.display = 'block';
+                }
+            }
+        }
+
+        function getDifficultyName(diff) {
+            const difficulties = ['Easy', 'Medium', 'Hard', 'Expert'];
+            return difficulties[diff] || 'Unknown';
+        }
+
+        function generateGridPreview(puzzleData) {
+            const size = puzzleData.boardSize;
+            const puzzle = puzzleData.puzzle;
+            let html = '';
+            
+            for (let row = 0; row < size; row++) {
+                html += '<div class="row">';
+                for (let col = 0; col < size; col++) {
+                    const num = puzzle[row * size + col];
+                    html += `<span class="cell ${num === 0 ? 'empty' : 'filled'}">${num === 0 ? '' : num}</span>`;
+                }
+                html += '</div>';
+            }
+            
+            return html;
+        }
+
+        // Auto-start on page load
         window.onload = function() {
-            redirectToApp();
+            showPreview();
+            
+            // Start redirect after 2 seconds (gives time to see preview)
+            setTimeout(function() {
+                document.getElementById('redirectMessage').style.display = 'block';
+                redirectToApp();
+            }, 2000);
         };
     </script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
+            color: #fff;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
         }
+        
         .container {
             background: rgba(255, 255, 255, 0.1);
-            padding: 40px;
-            border-radius: 20px;
             backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
         }
+        
         h1 {
-            font-size: 2.5em;
-            margin-bottom: 20px;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
         }
-        .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        #puzzlePreview {
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            display: none;
+        }
+        
+        .preview-grid {
+            margin-top: 15px;
+        }
+        
+        .row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+        
+        .cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 2px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .cell.filled {
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+        }
+        
+        .cell.empty {
+            background: rgba(255, 255, 255, 0.15);
+            color: transparent;
+        }
+        
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0;
+        }
+        
+        .spinner {
             width: 50px;
             height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 30px auto;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
         }
+        
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        #redirectMessage {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+            display: none;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .cell {
+                width: 25px;
+                height: 25px;
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎮 Sudoku Challenge</h1>
-        <p>Opening your Sudoku puzzle...</p>
-        <div class="loader"></div>
-        <p>If redirect doesn't work, <a href="#" onclick="redirectToApp()" style="color: #4CAF50;">click here</a></p>
+        <p class="subtitle">A puzzle is waiting for you!</p>
+        
+        <div id="puzzlePreview">
+            <!-- Puzzle preview will appear here -->
+        </div>
+        
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Opening Sudoku Puzzle...</p>
+        </div>
+        
+        <div id="redirectMessage">
+            <p>✅ Redirecting to Sudoku App...</p>
+            <p><small>If nothing happens, tap the button below</small></p>
+        </div>
+        
+        <button class="btn" onclick="redirectToApp()">
+            ▶ Open in Sudoku App
+        </button>
+        
+        <div class="footer">
+            <p>If you don't have the app, it will install automatically</p>
+            <p>Made with ❤️ by Om Swastika Tech</p>
+        </div>
     </div>
 </body>
 </html>
